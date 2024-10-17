@@ -1,0 +1,45 @@
+use eframe::egui;
+use nix::unistd::ForkResult;
+use std::ffi::{CStr, CString};
+use std::os::fd::OwnedFd;
+
+fn main() {
+    let fd = unsafe {
+        //Spawn a shell and terminal gui, and get their file descriptors
+        let res = nix::pty::forkpty(None, None).unwrap();
+        match res.fork_result {
+            ForkResult::Parent { .. } => (),
+            ForkResult::Child => {
+                let shell_name =
+                    CStr::from_bytes_with_nul(b"sh\0").expect("Should always have null terminator");
+                nix::unistd::execvp::<CString>("shell_name", &[]);
+          }
+        }
+    };
+
+    let native_options = eframe::NativeOptions::default();
+    eframe::run_native(
+        "PaulTerm",
+        native_options,
+        Box::new(|cc| Ok(Box::new(PaulTermEgui::new(cc, fd)))),
+    );
+}
+#[derive(Default)]
+struct PaulTermEgui {
+    buf: String,
+    fd: OwnedFd,
+}
+
+impl PaulTermEgui {
+    fn new(cc: &eframe::CreationContext<'_>, fd: OwnedFd) -> Self {
+        Self::default()
+    }
+}
+
+impl eframe::App for PaulTermEgui {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("Hello World!");
+        });
+    }
+}
